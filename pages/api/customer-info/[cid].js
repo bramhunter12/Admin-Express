@@ -29,8 +29,10 @@ export default async function handler(req, res) {
 
     const fields = contact.custom_field || {};
 
-    // Fetch full contact with related sales account to get cf_mc_features
+    // Fetch full contact with related sales account to get cf_mc_features, address, and phone
     let mcFeatures = null;
+    let storeAddress = null;
+    let storePhone = null;
     try {
       const contactResponse = await axios.get(
         `https://ipostal1-org.myfreshworks.com/crm/sales/api/contacts/${contact.id}?include=sales_accounts`,
@@ -54,7 +56,11 @@ export default async function handler(req, res) {
         );
         const accRaw = accountResponse.data;
         const accData = typeof accRaw === 'string' ? JSON.parse(accRaw) : accRaw;
-        mcFeatures = accData?.sales_account?.custom_field?.cf_mc_features || null;
+        const acc = accData?.sales_account || {};
+        mcFeatures = acc.custom_field?.cf_mc_features || null;
+        const addressParts = [acc.address, acc.city, acc.state, acc.zipcode].filter(Boolean);
+        storeAddress = addressParts.length ? addressParts.join(', ') : null;
+        storePhone = acc.phone || null;
       }
     } catch (accountErr) {
       console.error("Sales account fetch error:", accountErr.response?.data || accountErr.message);
@@ -68,6 +74,8 @@ export default async function handler(req, res) {
       member_since: fields.cf_plan_start_date || null,
       admin_link: fields.cf_link_to_customer_in_admin || null,
       mc_features: mcFeatures,
+      store_address: storeAddress,
+      store_phone: storePhone,
     });
   } catch (err) {
     console.error("API error:", err.response?.data || err.message);
