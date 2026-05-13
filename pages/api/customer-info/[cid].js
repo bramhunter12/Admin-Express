@@ -29,6 +29,37 @@ export default async function handler(req, res) {
 
     const fields = contact.custom_field || {};
 
+    // Fetch full contact with related sales account to get cf_mc_features
+    let mcFeatures = null;
+    try {
+      const contactResponse = await axios.get(
+        `https://ipostal1-org.myfreshworks.com/crm/sales/api/contacts/${contact.id}?include=sales_accounts`,
+        {
+          headers: {
+            Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const partialAccount = contactResponse.data?.contact?.sales_accounts?.[0];
+      if (partialAccount?.id) {
+        const accountResponse = await axios.get(
+          `https://ipostal1-org.myfreshworks.com/crm/sales/api/sales_accounts/${partialAccount.id}`,
+          {
+            headers: {
+              Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        const accRaw = accountResponse.data;
+        const accData = typeof accRaw === 'string' ? JSON.parse(accRaw) : accRaw;
+        mcFeatures = accData?.sales_account?.custom_field?.cf_mc_features || null;
+      }
+    } catch (accountErr) {
+      console.error("Sales account fetch error:", accountErr.response?.data || accountErr.message);
+    }
+
     return res.status(200).json({
       mail_center: fields.cf_mail_center_for_campaign || "N/A",
       mailbox_status: fields.cf_mailbox_account_status || null,
@@ -36,6 +67,7 @@ export default async function handler(req, res) {
       status: fields.cf_1583_doc_status || "N/A",
       member_since: fields.cf_plan_start_date || null,
       admin_link: fields.cf_link_to_customer_in_admin || null,
+      mc_features: mcFeatures,
     });
   } catch (err) {
     console.error("API error:", err.response?.data || err.message);
