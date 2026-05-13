@@ -72,6 +72,7 @@ export default async function handler(req, res) {
       plan: fields.cf_mailbox_plan || "N/A",
       status: fields.cf_1583_doc_status || "N/A",
       member_since: fields.cf_plan_start_date || null,
+      plan_billing: fields.cf_plan_billing || null,
       admin_link: fields.cf_link_to_customer_in_admin || null,
       mc_features: mcFeatures,
       store_address: storeAddress,
